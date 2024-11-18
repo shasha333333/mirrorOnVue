@@ -15,31 +15,31 @@
       <button @click="toggleMirror">镜像</button>
       <button @click="toggleLines">切换标准线</button>
       
-      <!-- 滚动条调整 -->
+      <!-- 控制标准线位置的输入框 -->
       <div>
-        <label for="offsetX">水平偏移:</label>
+        <label for="offsetX">水平偏移 (px): </label>
         <input
           type="range"
           id="offsetX"
-          min="0"
+          v-model="offsetX"
+          min="-100"
           max="100"
-          v-model="offsetXPercent"
-          @input="adjustOffsetX"
+          step="10"
         />
-        <span>{{ offsetXPercent }}%</span>
+        <span>{{ offsetX }} px</span>
       </div>
       
       <div>
-        <label for="offsetY">垂直偏移:</label>
+        <label for="offsetY">垂直偏移 (px): </label>
         <input
           type="range"
           id="offsetY"
-          min="0"
+          v-model="offsetY"
+          min="-100"
           max="100"
-          v-model="offsetYPercent"
-          @input="adjustOffsetY"
+          step="10"
         />
-        <span>{{ offsetYPercent }}%</span>
+        <span>{{ offsetY }} px</span>
       </div>
     </div>
   </div>
@@ -51,8 +51,8 @@ export default {
     return {
       showLines: false, // 控制标准线的显示与隐藏
       isMirrored: false, // 控制是否开启镜像
-      offsetXPercent: 50, // 水平偏移百分比
-      offsetYPercent: 50, // 垂直偏移百分比
+      offsetX: 0, // 水平偏移
+      offsetY: 0, // 垂直偏移
     };
   },
   methods: {
@@ -61,9 +61,14 @@ export default {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         this.$refs.video.srcObject = stream;
-        
+
         // 等待视频加载后设置 canvas 尺寸
         this.$refs.video.onloadedmetadata = () => {
+          this.drawLines(); // 在视频加载后绘制标准线
+        };
+
+        // 监听 video 的播放事件，确保 canvas 始终同步
+        this.$refs.video.onplay = () => {
           this.drawLines();
         };
       } catch (error) {
@@ -82,50 +87,44 @@ export default {
       const canvas = this.$refs.canvas;
       const context = canvas.getContext("2d");
       const video = this.$refs.video;
-      
-      // 确保 canvas 大小与 video 一致
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+
+      // 确保 video 的尺寸已经加载
+      if (video.videoWidth && video.videoHeight) {
+        // 确保 canvas 大小与 video 一致
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
 
       // 清空画布
-      context.clearRect(0, 0, canvas.width, canvas.height);
+      // context.clearRect(0, 0, canvas.width, canvas.height);
 
+      // 检查是否显示标准线
       if (this.showLines) {
         // 设置绘制标准线的样式
         context.strokeStyle = "#007bff"; // 蓝色，50%透明度
         context.lineWidth = 2;
 
-        // 计算基于视频尺寸的偏移量
-        const offsetX = (this.offsetXPercent / 100) * canvas.width; // 水平偏移量
-        const offsetY = (this.offsetYPercent / 100) * canvas.height; // 垂直偏移量
+        const fixX = 20; // 修正参数
 
         // 画竖直标准线
         context.beginPath();
-        context.moveTo(offsetX, 0);
-        context.lineTo(offsetX, canvas.height);
+        context.moveTo(canvas.width / 2 + this.offsetX, fixX);
+        context.lineTo(canvas.width / 2 + this.offsetX, canvas.height + fixX);
         context.stroke();
 
         // 画水平标准线
         context.beginPath();
-        context.moveTo(0, offsetY);
-        context.lineTo(canvas.width, offsetY);
+        context.moveTo(0, canvas.height / 2 + this.offsetY);
+        context.lineTo(canvas.width, canvas.height / 2 + this.offsetY);
         context.stroke();
+
+        console.log("Drawing lines with offsetX:", this.offsetX, "offsetY:", this.offsetY);
       }
     },
 
     // 切换镜像效果
     toggleMirror() {
       this.isMirrored = !this.isMirrored; // 切换镜像状态
-    },
-
-    // 调整水平偏移
-    adjustOffsetX() {
-      this.drawLines();
-    },
-
-    // 调整垂直偏移
-    adjustOffsetY() {
-      this.drawLines();
     },
   },
   mounted() {
@@ -134,7 +133,13 @@ export default {
   watch: {
     showLines() {
       this.drawLines(); // 在切换时绘制标准线
-    }
+    },
+    offsetX() {
+      this.drawLines(); // 每次水平偏移值变化时重新绘制
+    },
+    offsetY() {
+      this.drawLines(); // 每次垂直偏移值变化时重新绘制
+    },
   }
 };
 </script>
@@ -184,8 +189,6 @@ button:hover {
 }
 
 input[type="range"] {
-  width: 80%;         /* 可根据需要调整宽度 */
-  max-width: 300px;   /* 限制最大宽度为 300px */
-  margin: 10px 0;
+  margin: 10px;
 }
 </style>

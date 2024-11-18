@@ -15,31 +15,16 @@
       <button @click="toggleMirror">镜像</button>
       <button @click="toggleLines">切换标准线</button>
       
-      <!-- 滚动条调整 -->
+      <!-- 偏移量调整（使用滚动条）-->
       <div>
-        <label for="offsetX">水平偏移:</label>
-        <input
-          type="range"
-          id="offsetX"
-          min="0"
-          max="100"
-          v-model="offsetXPercent"
-          @input="adjustOffsetX"
-        />
-        <span>{{ offsetXPercent }}%</span>
+        <label for="offsetX">水平偏移 (X):</label>
+        <input type="range" v-model="offsetX" id="offsetX" min="-200" max="200" step="1" />
+        <span>{{ offsetX }}</span>
       </div>
-      
       <div>
-        <label for="offsetY">垂直偏移:</label>
-        <input
-          type="range"
-          id="offsetY"
-          min="0"
-          max="100"
-          v-model="offsetYPercent"
-          @input="adjustOffsetY"
-        />
-        <span>{{ offsetYPercent }}%</span>
+        <label for="offsetY">垂直偏移 (Y):</label>
+        <input type="range" v-model="offsetY" id="offsetY" min="-200" max="200" step="1" />
+        <span>{{ offsetY }}</span>
       </div>
     </div>
   </div>
@@ -51,8 +36,8 @@ export default {
     return {
       showLines: false, // 控制标准线的显示与隐藏
       isMirrored: false, // 控制是否开启镜像
-      offsetXPercent: 50, // 水平偏移百分比
-      offsetYPercent: 50, // 垂直偏移百分比
+      offsetX: 0, // 默认的水平偏移量
+      offsetY: 0, // 默认的垂直偏移量
     };
   },
   methods: {
@@ -95,37 +80,27 @@ export default {
         context.strokeStyle = "#007bff"; // 蓝色，50%透明度
         context.lineWidth = 2;
 
-        // 计算基于视频尺寸的偏移量
-        const offsetX = (this.offsetXPercent / 100) * canvas.width; // 水平偏移量
-        const offsetY = (this.offsetYPercent / 100) * canvas.height; // 垂直偏移量
+        const fixX = 20; // 修正参数
 
         // 画竖直标准线
         context.beginPath();
-        context.moveTo(offsetX, 0);
-        context.lineTo(offsetX, canvas.height);
+        context.moveTo(canvas.width / 2 + this.offsetX, fixX);
+        context.lineTo(canvas.width / 2 + this.offsetX, canvas.height + fixX);
         context.stroke();
 
         // 画水平标准线
         context.beginPath();
-        context.moveTo(0, offsetY);
-        context.lineTo(canvas.width, offsetY);
+        context.moveTo(0, canvas.height / 2 + this.offsetY);
+        context.lineTo(canvas.width, canvas.height / 2 + this.offsetY);
         context.stroke();
+
+        // 可以添加更多的标准线样式，如斜线或其他
       }
     },
 
     // 切换镜像效果
     toggleMirror() {
       this.isMirrored = !this.isMirrored; // 切换镜像状态
-    },
-
-    // 调整水平偏移
-    adjustOffsetX() {
-      this.drawLines();
-    },
-
-    // 调整垂直偏移
-    adjustOffsetY() {
-      this.drawLines();
     },
   },
   mounted() {
@@ -134,6 +109,12 @@ export default {
   watch: {
     showLines() {
       this.drawLines(); // 在切换时绘制标准线
+    },
+    offsetX() {
+      this.drawLines(); // 在偏移量调整时重新绘制标准线
+    },
+    offsetY() {
+      this.drawLines(); // 在偏移量调整时重新绘制标准线
     }
   }
 };
@@ -184,8 +165,13 @@ button:hover {
 }
 
 input[type="range"] {
-  width: 80%;         /* 可根据需要调整宽度 */
-  max-width: 300px;   /* 限制最大宽度为 300px */
-  margin: 10px 0;
+  margin: 10px;
+  width: 80%;
+  max-width: 300px;
+}
+
+span {
+  font-size: 16px;
+  margin-left: 10px;
 }
 </style>

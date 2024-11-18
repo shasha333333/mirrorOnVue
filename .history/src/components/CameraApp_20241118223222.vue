@@ -8,12 +8,13 @@
         width="100%" 
         height="auto"
       ></video>
-      <!-- Canvas 用于绘制标准线 -->
+      <!-- Canvas 用于绘制标准线和边缘检测 -->
       <canvas ref="canvas" class="overlay"></canvas>
     </div>
     <div class="controls">
       <button @click="toggleMirror">镜像</button>
       <button @click="toggleLines">切换标准线</button>
+      <button @click="toggleEdgeDetection">切换边缘检测</button> <!-- 新增边缘检测按钮 -->
       
       <!-- 滚动条调整 -->
       <div>
@@ -53,6 +54,7 @@ export default {
       isMirrored: false, // 控制是否开启镜像
       offsetXPercent: 50, // 水平偏移百分比
       offsetYPercent: 50, // 垂直偏移百分比
+      edgeDetectionEnabled: false, // 是否启用边缘检测
     };
   },
   methods: {
@@ -77,7 +79,13 @@ export default {
       this.drawLines(); // 在切换时绘制/清除标准线
     },
 
-    // 绘制标准线
+    // 切换边缘检测的启用状态
+    toggleEdgeDetection() {
+      this.edgeDetectionEnabled = !this.edgeDetectionEnabled;
+      this.drawLines(); // 在切换时重新绘制图像（包括边缘检测）
+    },
+
+    // 绘制标准线和执行边缘检测
     drawLines() {
       const canvas = this.$refs.canvas;
       const context = canvas.getContext("2d");
@@ -90,27 +98,93 @@ export default {
       // 清空画布
       context.clearRect(0, 0, canvas.width, canvas.height);
 
+      // 获取视频帧
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
       if (this.showLines) {
-        // 设置绘制标准线的样式
-        context.strokeStyle = "#007bff"; // 蓝色，50%透明度
-        context.lineWidth = 2;
-
-        // 计算基于视频尺寸的偏移量
-        const offsetX = (this.offsetXPercent / 100) * canvas.width; // 水平偏移量
-        const offsetY = (this.offsetYPercent / 100) * canvas.height; // 垂直偏移量
-
-        // 画竖直标准线
-        context.beginPath();
-        context.moveTo(offsetX, 0);
-        context.lineTo(offsetX, canvas.height);
-        context.stroke();
-
-        // 画水平标准线
-        context.beginPath();
-        context.moveTo(0, offsetY);
-        context.lineTo(canvas.width, offsetY);
-        context.stroke();
+        this.drawStandardLines(context, canvas);
       }
+
+      if (this.edgeDetectionEnabled) {
+        this.applyEdgeDetection(context, canvas);
+      }
+    },
+
+    // 绘制标准线
+    drawStandardLines(context, canvas) {
+      context.strokeStyle = "#007bff"; // 蓝色，50%透明度
+      context.lineWidth = 2;
+
+      const offsetX = (this.offsetXPercent / 100) * canvas.width; // 水平偏移量
+      const offsetY = (this.offsetYPercent / 100) * canvas.height; // 垂直偏移量
+
+      // 画竖直标准线
+      context.beginPath();
+      context.moveTo(offsetX, 0);
+      context.lineTo(offsetX, canvas.height);
+      context.stroke();
+
+      // 画水平标准线
+      context.beginPath();
+      context.moveTo(0, offsetY);
+      context.lineTo(canvas.width,offsetY);
+      context.stroke();
+    },
+
+    // 应用简单的边缘检测
+    applyEdgeDetection(context, canvas) {
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      const width = canvas.width;
+      const height = canvas.height;
+
+      // Sobel 算法：水平和垂直边缘检测核
+      const sobelX = [
+        [-1, 0, 1],
+        [-2, 0, 2],
+        [-1, 0, 1]
+      ];
+      const sobelY = [
+        [-1, -2, -1],
+        [0, 0, 0],
+        [1, 2, 1]
+      ];
+
+      const resultData = new Uint8ClampedArray(data.length);
+
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          let pixelX = 0;
+          let pixelY = 0;
+
+          // 执行 Sobel 核计算
+          for (let ky = -1; ky <= 1; ky++) {
+            for (let kx = -1; kx <= 1; kx++) {
+              const pixel = (y + ky) * width + (x + kx);
+              const weightX = sobelX[ky + 1][kx + 1];
+              const weightY = sobelY[ky + 1][kx + 1];
+              
+              pixelX += weightX * data[pixel * 4];
+              pixelY += weightY * data[pixel * 4];
+            }
+          }
+
+          // 计算边缘强度
+          const magnitude = Math.sqrt(pixelX * pixelX + pixelY * pixelY);
+          const color = Math.min(255, magnitude);
+
+          const pixelIdx = (y * width + x) * 4;
+          resultData[pixelIdx] = color;
+          resultData[pixelIdx + 1] = color;
+          resultData[pixelIdx + 2] = color;
+          resultData[pixelIdx + 3] = 255; // 保持 alpha 值为 255
+        }
+      }
+
+      // 将结果数据写回画布
+      const newImageData = new ImageData(resultData, width, height);
+      context.putImageData(newImageData, 0, 0);
     },
 
     // 切换镜像效果
@@ -134,6 +208,9 @@ export default {
   watch: {
     showLines() {
       this.drawLines(); // 在切换时绘制标准线
+    },
+    edgeDetectionEnabled() {
+      this.drawLines(); // 在切换时应用边缘检测
     }
   }
 };

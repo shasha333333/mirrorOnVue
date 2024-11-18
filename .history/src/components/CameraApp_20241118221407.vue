@@ -184,8 +184,7 @@ button:hover {
 }
 
 input[type="range"] {
-  width: 80%;         /* 可根据需要调整宽度 */
-  max-width: 300px;   /* 限制最大宽度为 300px */
+  width: 80%;
   margin: 10px 0;
 }
 </style>

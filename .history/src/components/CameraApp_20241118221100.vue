@@ -101,14 +101,14 @@ export default {
 
         // 画竖直标准线
         context.beginPath();
-        context.moveTo(offsetX, 0);
-        context.lineTo(offsetX, canvas.height);
+        context.moveTo(canvas.width / 2 + offsetX, 0);
+        context.lineTo(canvas.width / 2 + offsetX, canvas.height);
         context.stroke();
 
         // 画水平标准线
         context.beginPath();
-        context.moveTo(0, offsetY);
-        context.lineTo(canvas.width, offsetY);
+        context.moveTo(0, canvas.height / 2 + offsetY);
+        context.lineTo(canvas.width, canvas.height / 2 + offsetY);
         context.stroke();
       }
     },
@@ -184,8 +184,7 @@ button:hover {
 }
 
 input[type="range"] {
-  width: 80%;         /* 可根据需要调整宽度 */
-  max-width: 300px;   /* 限制最大宽度为 300px */
+  width: 80%;
   margin: 10px 0;
 }
 </style>
